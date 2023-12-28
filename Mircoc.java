@@ -1,10 +1,10 @@
-package net.unethicalite.plugins.Tablet;
+package net.unethicalite.plugins.Tanner;
 
 import com.google.inject.Inject;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
-import net.runelite.api.Point;
 import net.runelite.api.TileObject;
+import net.runelite.api.widgets.Widget;
 import net.unethicalite.api.commons.Time;
 import net.unethicalite.api.entities.NPCs;
 import net.unethicalite.api.entities.TileObjects;
@@ -12,6 +12,9 @@ import net.unethicalite.api.game.Game;
 import net.unethicalite.api.input.Mouse;
 import net.unethicalite.api.items.GrandExchange;
 import net.unethicalite.api.items.Inventory;
+import net.unethicalite.api.movement.Movement;
+import net.unethicalite.api.movement.pathfinder.Walker;
+import net.unethicalite.api.utils.MessageUtils;
 import net.unethicalite.api.widgets.Widgets;
 import net.unethicalite.client.Static;
 
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 
+//mircocversion = v3.0
 public class Mircoc {
 
     public int rnd(int min, int max) {
@@ -26,13 +30,9 @@ public class Mircoc {
         return random.nextInt(max - min) + min;
     }
 
-    public boolean isOnScreen(NPC npCs){
-        Point point = npCs.getClickPoint();
-        return false;
-    }
 
     public boolean UNTILSPLEEP(BooleanSupplier supplier){
-        return Time.sleepUntil(supplier, 10, rnd(1500,2000));
+        return Time.sleepUntil(supplier, 10, 5000);
     }
 
     public boolean Loggined(){
@@ -46,12 +46,14 @@ public class Mircoc {
         return false;
     }
 
-    private TabletPlugin TabletPlugin;
+
+
+    private TannerPlugin TannerPlugin;
 
 
     @Inject
-    private Mircoc(TabletPlugin plugin, TabletConfig config) throws IOException {
-        this.TabletPlugin = plugin;
+    private Mircoc(TannerPlugin plugin, TannerConfig config) throws IOException {
+        this.TannerPlugin = plugin;
     }
     private void OPENGE(){
         NPC GE_NPC = NPCs.getNearest("Grand Exchange Clerk");
@@ -74,8 +76,8 @@ public class Mircoc {
     private boolean WAITINGGE( int timewait){
         long breaktimer = System.currentTimeMillis();
         while (!GrandExchange.isEmpty() && System.currentTimeMillis() - breaktimer < timewait &&
-                TabletPlugin.Run ) {
-            TabletPlugin.GETime = System.currentTimeMillis() - breaktimer;
+                TannerPlugin.Run ) {
+            MessageUtils.addMessage(System.currentTimeMillis() - breaktimer +"");
             if (GrandExchange.canCollect()) {
                 if (Widgets.get(465, 7, 22).getTextColor() == 0x8f0000) {
                     GrandExchange.collect();
@@ -84,7 +86,7 @@ public class Mircoc {
                 } else if (Widgets.get(465, 7, 22).getTextColor() == 0x5F00) {
                     GrandExchange.collect();
                     Time.sleep(rnd(200, 2500));
-                    TabletPlugin.overpreice=10;
+                    TannerPlugin.overpreice=10;
                     return true;
                 }
             }
@@ -95,7 +97,7 @@ public class Mircoc {
     private void ABORTGE(int itemid){
         if (!GrandExchange.isEmpty()) {
             GrandExchange.abortOffer(itemid);
-            TabletPlugin.overpreice= TabletPlugin.overpreice*2;
+            TannerPlugin.overpreice=TannerPlugin.overpreice*2;
             Time.sleepUntil(() -> Widgets.get(465, 7, 22).getTextColor() == 0x8f0000, 5000);
         }
     }
@@ -129,7 +131,7 @@ public class Mircoc {
             return false;
         }
         if (!WAITINGGE(timewait)){
-            ABORTGE(itemid);
+            ABORTGE(itemid-1);
             return false;
         }
         else {
@@ -137,24 +139,40 @@ public class Mircoc {
             return true;
         }
     }
-
-    public boolean selectitem(int id){
-            for (int i = 0 ; i < 27 ; i++) {
-                if (Widgets.get(149,0,i)!=null) {
-                    if (Widgets.get(149, 0, i).getItemId() == id) {
-                        Mouse.click(Widgets.get(149,0,i).getCanvasLocation().getX()
-                                        +rnd(1,Widgets.get(149,0,i).getWidth()),
-                                    Widgets.get(149,0,i).getCanvasLocation().getY()
-                                        +rnd(1,Widgets.get(149,0,i).getHeight()),
-                                    true);
-                        return true;
-                    }
-                }
-            }
+    public boolean CHECKAVAILABLE(int i1 , int i2){
+        if (Widgets.get(i1,i2)!=null)
+            if (Widgets.get(i1,i2).isVisible())
+                return true;
         return false;
     }
+    public boolean CHECKAVAILABLE(int i1 , int i2,int i3){
+        if (Widgets.get(i1,i2,i3)!=null)
+            if (Widgets.get(i1,i2,i3).isVisible())
+                return true;
+        return false;
+    }
+    public boolean selectitem(int id){
+        for (int i = 0 ; i < 27 ; i++) {
+            if (Widgets.get(149,0,i)!=null) {
+                if (Widgets.get(149, 0, i).getItemId() == id) {
+                    Mouse.click(Widgets.get(149,0,i).getCanvasLocation().getX()
+                                    +rnd(1,Widgets.get(149,0,i).getWidth()),
+                            Widgets.get(149,0,i).getCanvasLocation().getY()
+                                    +rnd(1,Widgets.get(149,0,i).getHeight()),
+                            true);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    public void RUNTOGGLE(){
+        if (Movement.getRunEnergy()>10)
+            if (!Movement.isRunEnabled())
+                Movement.toggleRun();
+    }
     public boolean BANKOPEN(){
-        TileObject booth = TileObjects.getFirstSurrounding(3163, 3490, 0, 10, (x) -> {
+        TileObject booth = TileObjects.getFirstSurrounding(3268, 3495, 0, 3, (x) -> {
             return x.hasAction(new String[]{"Bank"});
         });
         if (booth != null) {
@@ -207,7 +225,7 @@ public class Mircoc {
     public int SLOTPOSX(int toslot){
         for (int i = 0; i < 27; i++) {
             if (Widgets.get(149,0,i)!=null) {
-                    return Widgets.get(149,0,i).getOriginalX();
+                return Widgets.get(149,0,i).getOriginalX();
             }
         }
         return 0;
@@ -237,8 +255,8 @@ public class Mircoc {
     public static boolean isselecteditem()
     {
         for (int i = 0; i < 27; i++) {
-             if (Widgets.get(149,0,i)!=null) {
-               if (Widgets.get(149, 0, i).getBorderType() == 2) {
+            if (Widgets.get(149,0,i)!=null) {
+                if (Widgets.get(149, 0, i).getBorderType() == 2) {
                     return true;
                 }
             }
